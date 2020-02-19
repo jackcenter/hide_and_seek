@@ -13,7 +13,6 @@ def initialize_robot(name: str, pose_file: str, color: str, team: str, workspace
     filename = get_pose_data_file(pose_file)
     initial_state = load_robot_state_data(filename)
     robot = TwoDimensionalRobot(name, initial_state, team, color)
-    robot.update_state_keys()
     workspace.robots.append(robot)
     return robot
 

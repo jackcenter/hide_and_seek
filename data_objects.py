@@ -5,12 +5,10 @@ class GroundTruth:
     """
     data object to hold all information pertinent to the ground truth at a given time step
     """
-    def __init__(self, step: int, state_1: float, state_2: float, state_3, state_4, state_names=None):
+    def __init__(self, step: int, state_1: float, state_2: float, state_names=None):
         self.step = step
         self.x_1 = state_1
         self.x_2 = state_2
-        self.x_3 = state_3
-        self.x_4 = state_4
         self.state_names = state_names
 
     @staticmethod
@@ -29,8 +27,6 @@ class GroundTruth:
             step,
             state_array[0],
             state_array[1],
-            state_array[2],
-            state_array[3],
         )
 
     @staticmethod
@@ -45,8 +41,6 @@ class GroundTruth:
             step,
             state_list[0],
             state_list[1],
-            state_list[2],
-            state_list[3],
         )
 
     def return_data_array(self):
@@ -57,8 +51,6 @@ class GroundTruth:
         return np.array([
             [self.x_1],
             [self.x_2],
-            [self.x_3],
-            [self.x_4],
         ])
 
 
@@ -66,20 +58,16 @@ class StateEstimate:
     """
     data object to hold all information pertinent to the state estimate at a given time step
     """
-    def __init__(self, step: int, state_1: float, state_2: float, state_3: float, state_4: float, covariance,
+    def __init__(self, step: int, state_1: float, state_2: float, covariance,
                  state_names=None):
         self.step = step
         self.x_1 = state_1
         self.x_2 = state_2
-        self.x_3 = state_3
-        self.x_4 = state_4
         self.state_names = state_names
 
         self.covariance = covariance
         self.x1_2sigma = 2 * float(covariance[0][0]) ** 0.5
         self.x2_2sigma = 2 * float(covariance[1][1]) ** 0.5
-        self.x3_2sigma = 2 * float(covariance[2][2]) ** 0.5
-        self.x4_2sigma = 2 * float(covariance[3][3]) ** 0.5
 
     @staticmethod
     def create_from_array(step: int, state_array: np.ndarray, covariance: np.ndarray):
@@ -98,8 +86,6 @@ class StateEstimate:
             step,
             state_array[0],
             state_array[1],
-            state_array[2],
-            state_array[3],
             covariance
         )
 
@@ -116,8 +102,6 @@ class StateEstimate:
             step,
             state_list[0],
             state_list[1],
-            state_list[2],
-            state_list[3],
             covariance
         )
 
@@ -129,8 +113,6 @@ class StateEstimate:
         return np.array([
             [self.x_1],
             [self.x_2],
-            [self.x_3],
-            [self.x_4]
         ])
 
     def return_covariance_array(self):
@@ -150,10 +132,6 @@ class StateEstimate:
             return self.x1_2sigma
         elif state == 'x_2':
             return self.x2_2sigma
-        elif state == 'x_3':
-            return self.x3_2sigma
-        elif state == 'x_4':
-            return self.x4_2sigma
         else:
             print("ERROR: requested state not found for 'get_two_sigma_value' in data_objects")
             return None

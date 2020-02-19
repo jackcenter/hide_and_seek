@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class Workspace:
@@ -88,12 +89,10 @@ class TwoDimensionalRobot:
         y_i = self.state.get(self.state_names[1])
         plt.plot(x_i, y_i, self.color + 'x')
 
-    def update_state_keys(self):
+    def return_state_array(self):
         """
-        Updates state dictionary keys once the robot is named by a planner
-        :return: N/A
+        converts and returns the robot's state into a numpy array
+        :return: n x 1 numpy array of current state variables
         """
-        for key in self.state.keys():
-            self.state[self.name + '_' + key] = self.state.pop(key)
-
-        self.state_names = list(self.state.keys())
+        state_list = list(self.state.values())
+        return np.array(state_list).reshape((-1, 1))
