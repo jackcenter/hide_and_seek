@@ -13,7 +13,7 @@ class DataModel:
         x_coordinates = [x.y_1 for x in self.noisy_measurements]
         y_coordinates = [y.y_2 for y in self.noisy_measurements]
 
-        plt.plot(x_coordinates, y_coordinates, 'bx')
+        plt.plot(x_coordinates, y_coordinates, 'b.', alpha=0.5)
 
     def plot_state_estimate(self):
         x_coordinates = [x.x_1 for x in self.state_estimate]

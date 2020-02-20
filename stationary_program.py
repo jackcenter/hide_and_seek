@@ -10,6 +10,10 @@ from system_dynamics import get_ground_truth
 
 
 def main():
+    # TODO: make the plot colors better
+    # TODO: fix robot measurement and state organization
+    # TODO: implement multiple robots
+    # TODO: implement channel filter
     plt.figure()
     ax = plt.gca()
 
@@ -38,8 +42,12 @@ def main():
 
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
     truth_model = build_truth_model(state_space, x0, steps)
+    # TODO: have noisy measurements come from robot base on truth model, and have robot store measurements.
+    # TODO: have noisy measurements be generated real time instead of in advance
     truth_model.plot_noisy_measurements()
+    # TODO: noisy measurements probably shouldn't be in the truth model, each robot should have them
 
+    # TODO: make seeker hold onto this information so multiple targets can be assessed
     initializer = InformationEstimate.create_from_array(0, i_init, I_init)
     information_list = [initializer]
 
