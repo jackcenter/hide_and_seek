@@ -1,21 +1,21 @@
 import numpy as np
-from data_objects import StateEstimate, Measurement
+from data_objects import InformationEstimate, Measurement
 from estimation_tools import DiscreteLinearStateSpace
 
 
-def run_information_filter(self, state_space: DiscreteLinearStateSpace, state: StateEstimate, measurement: Measurement):
+def run(state_space: DiscreteLinearStateSpace, state: InformationEstimate, measurement: Measurement):
     step = state.step
     i_k0_p = state.return_data_array()
-    I_k0_p = state.return_covariance_array()
+    I_k0_p = state.return_information_array()
     y_k1 = measurement.return_data_array()
 
-    [x_k1_m, p_k1_m, k_k1] = self.IF_time_update(state_space, i_k0_p, I_k0_p)
-    [x_k1_p, p_k1_p] = self.IF_measurement_update(x_k1_m, p_k1_m, k_k1, y_k1)
+    [x_k1_m, p_k1_m, k_k1] = time_update(state_space, i_k0_p, I_k0_p)
+    [x_k1_p, p_k1_p] = measurement_update(x_k1_m, p_k1_m, k_k1, y_k1)
 
-    return StateEstimate.create_from_array(step, x_k1_p, p_k1_p)
+    return InformationEstimate.create_from_array(step, x_k1_p, p_k1_p)
 
 
-def IF_time_update(state_space: DiscreteLinearStateSpace, i_k0_p: np.ndarray, I_k0_p: np.ndarray, u_k0=0):
+def time_update(state_space: DiscreteLinearStateSpace, i_k0_p: np.ndarray, I_k0_p: np.ndarray, u_k0=0):
     F_k = state_space.F
     G_k = state_space.G
     Q_k = state_space.Q
@@ -31,7 +31,7 @@ def IF_time_update(state_space: DiscreteLinearStateSpace, i_k0_p: np.ndarray, I_
     return [i_k1_m, I_k1_m]
 
 
-def IF_measurement_update(self, state_space: DiscreteLinearStateSpace, i_k1_m, I_k1_m, y_k1):
+def measurement_update(state_space: DiscreteLinearStateSpace, i_k1_m, I_k1_m, y_k1):
     H_k = state_space.H
     R = state_space.R
     n, _ = state_space.get_dimensions()

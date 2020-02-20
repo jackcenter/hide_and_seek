@@ -54,6 +54,36 @@ class GroundTruth:
         ])
 
 
+class InformationEstimate:
+    def __init__(self, step: int, info_1: float, info_2: float, info_matrix: np.ndarray):
+        self.step = step
+        self.i_1 = info_1
+        self.i_2 = info_2
+        self.I_matrix = info_matrix
+
+    @staticmethod
+    def create_from_array(step: int, info_array: np.ndarray, info_matrix: np.ndarray):
+        if info_array.shape[1]:
+            # reduces 2D state array down to a single dimension
+            state_array = info_array.squeeze()
+
+        return StateEstimate(
+            step,
+            info_array[0],
+            info_array[1],
+            info_matrix
+        )
+
+    def return_data_array(self):
+        return np.array([
+            [self.i_1],
+            [self.i_2],
+        ])
+
+    def return_information_matrix(self):
+        return self.I_matrix
+
+
 class StateEstimate:
     """
     data object to hold all information pertinent to the state estimate at a given time step

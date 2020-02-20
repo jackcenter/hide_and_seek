@@ -5,6 +5,7 @@ from data_objects import GroundTruth
 from data_model import DataModel
 from estimation_tools import DiscreteLinearStateSpace, get_time_vector, get_true_measurements, get_noisy_measurements
 from initialize import initialize_environment, initialize_robot
+import information_filter as IF
 from system_dynamics import get_ground_truth
 
 
@@ -25,6 +26,9 @@ def main():
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
     truth_model = build_truth_model(state_space, x0, steps)
     truth_model.plot_noisy_measurements()
+
+    for y in truth_model.noisy_measurements:
+        IF.run()
     plt.show()
 
 
