@@ -1,3 +1,7 @@
+from math import sqrt
+
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 import numpy as np
 
 
@@ -53,6 +57,9 @@ class GroundTruth:
             [self.x_2],
         ])
 
+    def plot(self):
+        plt.plot(self.x_1, self.x_2)
+
 
 class InformationEstimate:
     def __init__(self, step: int, info_1: float, info_2: float, info_matrix: np.ndarray):
@@ -65,9 +72,9 @@ class InformationEstimate:
     def create_from_array(step: int, info_array: np.ndarray, info_matrix: np.ndarray):
         if info_array.shape[1]:
             # reduces 2D state array down to a single dimension
-            state_array = info_array.squeeze()
+            info_array = info_array.squeeze()
 
-        return StateEstimate(
+        return InformationEstimate(
             step,
             info_array[0],
             info_array[1],
@@ -82,6 +89,11 @@ class InformationEstimate:
 
     def return_information_matrix(self):
         return self.I_matrix
+
+    def get_state_estimate(self):
+        covariance = np.linalg.inv(self.I_matrix)
+        state_array = covariance @ self.return_data_array()
+        return StateEstimate.create_from_array(self.step, state_array, covariance)
 
 
 class StateEstimate:
@@ -165,6 +177,15 @@ class StateEstimate:
         else:
             print("ERROR: requested state not found for 'get_two_sigma_value' in data_objects")
             return None
+
+    def plot_state(self):
+        plt.plot(self.x_1, self.x_2, 'd', color='maroon', markerfacecolor='none')
+
+    def get_covariance_ellipse(self):
+        major_axis = 2*self.x1_2sigma * sqrt(5.991)
+        minor_axis = 2 * self.x2_2sigma * sqrt(5.991)
+
+        return Ellipse(xy=(self.x_1, self.x_2), width=major_axis, height=minor_axis, edgecolor='b', fc='None', ls='--')
 
 
 class Measurement:

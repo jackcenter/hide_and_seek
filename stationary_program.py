@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 
-from data_objects import GroundTruth
+from data_objects import GroundTruth, InformationEstimate
 from data_model import DataModel
 from estimation_tools import DiscreteLinearStateSpace, get_time_vector, get_true_measurements, get_noisy_measurements
 from initialize import initialize_environment, initialize_robot
@@ -10,11 +10,24 @@ from system_dynamics import get_ground_truth
 
 
 def main():
+    plt.figure()
+    ax = plt.gca()
+
     dt = 1.0
     t0 = 0
-    tf = 40
+    tf = 100
     times = get_time_vector(t0, tf, dt)
     steps = len(times) - 1
+
+    i_init = np.array([
+        [0],
+        [0]
+    ])
+
+    I_init = np.array([
+        [0, 0],
+        [0, 0]
+    ])
 
     workspace, state_space = setup(dt)
     workspace.plot()
@@ -27,8 +40,26 @@ def main():
     truth_model = build_truth_model(state_space, x0, steps)
     truth_model.plot_noisy_measurements()
 
+    initializer = InformationEstimate.create_from_array(0, i_init, I_init)
+    information_list = [initializer]
+
     for y in truth_model.noisy_measurements:
-        IF.run()
+        information_list.append(IF.run(state_space, information_list[-1], y))
+
+    state_estimate_list = []
+    for i in information_list[1:-1]:
+        state_estimate_list.append(i.get_state_estimate())
+
+    truth_model.state_estimate = state_estimate_list
+    # truth_model.plot_state_estimate()
+
+    states_of_interest = [1, 29, 99]
+    for i in states_of_interest:
+        truth_model.state_estimate[i].plot_state()
+        ellipse = truth_model.state_estimate[i].get_covariance_ellipse()
+        ax.add_patch(ellipse)
+
+    print(truth_model.state_estimate[-1].return_data_array())
     plt.show()
 
 
@@ -45,8 +76,8 @@ def setup(dt: float):
     G = np.zeros((2, 2))
     H = np.eye(2)
     M = np.zeros((2, 2))
-    Q = np.zeros((2, 2))
-    R = np.eye(2)
+    Q = np.eye(2)*.001
+    R = np.eye(2)*5
 
     state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R, dt)
 

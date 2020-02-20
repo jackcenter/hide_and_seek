@@ -15,35 +15,12 @@ class DataModel:
 
         plt.plot(x_coordinates, y_coordinates, 'bx')
 
-    def plot_state(self, attribute: str, state: str, steps=None, marker='k-'):
-        """
-        plots a specific state from a given data list
-        :param attribute: data list model attribute (ie 'state_estimate')
-        :param state: string name of the state attribute in the object (ie 'x_1' or 'x_2' ...)
-        :param steps: number of steps from data to plot
-        :param marker: marker style for plot from pyplot
-        :return:
-        """
-        x_coordinates = [x.step for x in getattr(self, attribute)]
-        y_coordinates = [getattr(y, state) for y in getattr(self, attribute)]
+    def plot_state_estimate(self):
+        x_coordinates = [x.x_1 for x in self.state_estimate]
+        y_coordinates = [y.x_2 for y in self.state_estimate]
 
-        if steps:
-            x_coordinates = x_coordinates[0:steps]
-            y_coordinates = y_coordinates[0:steps]
+        plt.plot(x_coordinates, y_coordinates, 'd', color='maroon', markerfacecolor='none')
 
-        x_coordinates = [x for x in x_coordinates]
-
-        plt.plot(x_coordinates, y_coordinates, marker)
-
-    def plot_state_estimate(self, state, steps=None, marker='k'):
-        """
-        plots a specific state from the state_estimate data list
-        :param state:  string name of the state attribute in the State Estimate Object (ie 'x_1' or 'x_2' ...)
-        :param steps: number of steps from data to plot
-        :param marker: marker style for plot from pyplot
-        :return:
-        """
-        self.plot_state('state_estimate', state, steps, marker)
 
     def plot_two_sigma(self, state, steps=None, marker='b--'):
         """
