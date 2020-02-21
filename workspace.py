@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data_objects import InformationEstimate
+from data_objects import InformationEstimate, Measurement
 from estimation_tools import get_noisy_measurement
 import information_filter as IF
 
@@ -51,10 +51,9 @@ class Workspace:
         y_min = self.y_bounds[0]
         y_max = self.y_bounds[1] + 1
 
-        plt.grid('on')
         plt.axis('equal')
-        plt.xticks(range(x_min, x_max))
-        plt.yticks(range(y_min, y_max))
+        plt.xticks(range(x_min, x_max, 10))
+        plt.yticks(range(y_min, y_max, 10))
 
 
 class Obstacle:
@@ -76,15 +75,14 @@ class Obstacle:
         plt.plot(x_coordinates, y_coordinates)
 
 
+# TODO: separate hiders and seekers
 class TwoDimensionalRobot:
-    def __init__(self, name: str, state: dict, team: str, color: str):
+    def __init__(self, name: str, state: dict, color: str):
         self.name = name
         self.state = state
-        self.team = team
         self.color = color
 
         self.state_names = list(state.keys())
-        self.measurement_noise = None
         self.i_init = np.array([
             [0],
             [0]
@@ -106,13 +104,7 @@ class TwoDimensionalRobot:
         """
         x_i = self.state.get(self.state_names[0])
         y_i = self.state.get(self.state_names[1])
-        plt.plot(x_i, y_i, self.color + 'x')
-
-    def plot_measurements(self):
-        x_coordinates = [x.y_1 for x in self.measurement_list]
-        y_coordinates = [y.y_2 for y in self.measurement_list]
-
-        plt.plot(x_coordinates, y_coordinates, 'b.', alpha=0.5)
+        plt.plot(x_i, y_i, 'x', color=self.color)
 
     def return_state_array(self):
         """
@@ -122,13 +114,34 @@ class TwoDimensionalRobot:
         state_list = list(self.state.values())
         return np.array(state_list).reshape((-1, 1))
 
-    def get_measurement(self):
-        true_measurement = self.truth_model.true_measurements[self.current_measurement_step]
-        noisy_measurement = get_noisy_measurement(self.measurement_noise, true_measurement)
+
+class Seeker(TwoDimensionalRobot):
+    def __init__(self, name: str, state: dict, color: str, R: np.ndarray):
+        super().__init__(name, state, color)
+        self.R = R
+
+    def plot_measurements(self):
+        x_coordinates = [x.y_1 for x in self.measurement_list]
+        y_coordinates = [y.y_2 for y in self.measurement_list]
+
+        plt.plot(x_coordinates, y_coordinates, 'o', mfc=self.color, markersize=2, mec='None', alpha=0.5)
+
+    def get_measurement(self, true_measurement: Measurement):
+        noisy_measurement = get_noisy_measurement(self.R, true_measurement)
         self.measurement_list.append(noisy_measurement)
         self.current_measurement_step += 1
         return noisy_measurement
 
-    def run_filter(self, state_space):
-        y = self.get_measurement()
-        self.information_list.append(IF.run(state_space, self.information_list[-1], y))
+    def run_filter(self, target):
+        # TODO: run filter on a target robot by aligning current step with truth model
+        # TODO: base on the target, a different information list should be picked
+        current_step = self.information_list[-1].step
+        true_measurement = next((x for x in target.truth_model.true_measurements if x.step == current_step + 1), None)
+        y = self.get_measurement(true_measurement)
+        self.information_list.append(IF.run(target.state_space, self.information_list[-1], y))
+
+
+class Hider(TwoDimensionalRobot):
+    def __init__(self, name: str, state: dict, color: str, state_space):
+        super().__init__(name, state, color)
+        self.state_space = state_space

@@ -4,7 +4,7 @@ import numpy as np
 from data_objects import GroundTruth
 from data_model import TruthModel
 from estimation_tools import DiscreteLinearStateSpace, get_time_vector, get_true_measurements
-from initialize import initialize_environment, initialize_robot
+from initialize import initialize_environment, initialize_seeker, initialize_hider
 from system_dynamics import get_ground_truth
 
 
@@ -39,50 +39,67 @@ def main():
     workspace.plot()
     # plt.show()
 
-    seeker = workspace.robots[0]
-    hider = workspace.robots[1]
+    seeker1 = workspace.robots[0]
+    seeker2 = workspace.robots[1]
+    hider = workspace.robots[2]
 
+    # TODO: make this part of a hider
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
     truth_model = build_truth_model(state_space, x0, steps)
-
-    # TEST Robot Functionality ===========================================
-    # TODO: fix robot initialization to include all of this
-    seeker.measurement_noise = np.array([
-        [2, 0],
-        [0, 5]
-    ])
-    seeker.truth_model = truth_model
+    hider.truth_model = truth_model
 
     for _ in range(0, steps):
-        seeker.run_filter(state_space)
+        # TODO: state space should be part of the hider
+        seeker1.run_filter(hider)
+        seeker2.run_filter(hider)
 
-    seeker.plot_measurements()
-    state_estimate_list = []
-    for i in seeker.information_list[1:-1]:
-        state_estimate_list.append(i.get_state_estimate())
+    seeker1.plot_measurements()
+    seeker2.plot_measurements()
 
-    truth_model.state_estimate = state_estimate_list
-
-    states_of_interest = [0, 29, 98]
+    states_of_interest = [1, 30, 99]
     for i in states_of_interest:
         # TODO: have robot invert these real time to state estimates
-        truth_model.state_estimate[i].plot_state()
-        ellipse = truth_model.state_estimate[i].get_covariance_ellipse()
+        state_estimate1 = seeker1.information_list[i].get_state_estimate()
+        state_estimate1.plot_state(seeker1.color)
+        ellipse = state_estimate1.get_covariance_ellipse(seeker1.color)
         ax.add_patch(ellipse)
 
-    print(truth_model.state_estimate[-1].return_data_array())
+        state_estimate2 = seeker2.information_list[i].get_state_estimate()
+        state_estimate2.plot_state(seeker2.color)
+        ellipse = state_estimate2.get_covariance_ellipse(seeker2.color)
+        ax.add_patch(ellipse)
+
+    print("State Estimate from Seeker 1: ")
+    print(np.around(seeker1.information_list[-1].get_state_estimate().return_data_array(), 2))
+    print()
+    print("State Estimate from Seeker 2: ")
+    print(np.around(seeker2.information_list[-1].get_state_estimate().return_data_array(), 2))
     plt.show()
 
 
 def setup(dt: float):
     map_file = 'empty_map.txt'
-    seeker_pose_file = 'pose_1_1.txt'
-    hider_pose_file = 'pose_9_9.txt'
+    seeker1_pose_file = 'pose_m30_m30.txt'
+    seeker2_pose_file = 'pose_m20_10.txt'
+    hider_pose_file = 'pose_30_0.txt'
 
     workspace = initialize_environment(map_file)
-    initialize_robot('seeker_1', seeker_pose_file, 'k', 'seeker', workspace)
-    initialize_robot('hider_1', hider_pose_file, 'r', 'hider', workspace)
 
+    # TODO: need a measurement model
+    R1 = np.array([
+        [10, 0],
+        [0, 15]
+    ])
+
+    R2 = np.array([
+        [30, 0],
+        [0, 20]
+    ])
+
+    initialize_seeker('seeker_1', seeker1_pose_file, 'darkred', workspace, R1)
+    initialize_seeker('seeker_2', seeker2_pose_file, 'midnightblue', workspace, R2)
+
+    # TODO: need a dynamics model
     F = np.eye(2)
     G = np.zeros((2, 2))
     H = np.eye(2)
@@ -94,6 +111,8 @@ def setup(dt: float):
     ])
 
     state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R, dt)
+    # TODO: don't really need R here
+    initialize_hider('hider_1', hider_pose_file, 'r', workspace, state_space)
 
     return workspace, state_space
 

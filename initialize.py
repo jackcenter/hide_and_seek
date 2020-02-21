@@ -1,6 +1,6 @@
 import csv
 import os
-from workspace import Workspace, TwoDimensionalRobot
+from workspace import Workspace, Seeker, Hider
 
 
 def initialize_environment(environment_filename: str):
@@ -9,10 +9,18 @@ def initialize_environment(environment_filename: str):
     return Workspace(environment_filename, bounds, obstacles)
 
 
-def initialize_robot(name: str, pose_file: str, color: str, team: str, workspace: Workspace):
+def initialize_seeker(name: str, pose_file: str, color: str, workspace: Workspace, R=None):
     filename = get_pose_data_file(pose_file)
     initial_state = load_robot_state_data(filename)
-    robot = TwoDimensionalRobot(name, initial_state, team, color)
+    robot = Seeker(name, initial_state, color, R)
+    workspace.robots.append(robot)
+    return robot
+
+
+def initialize_hider(name: str, pose_file: str, color: str, workspace: Workspace, state_space):
+    filename = get_pose_data_file(pose_file)
+    initial_state = load_robot_state_data(filename)
+    robot = Hider(name, initial_state, color, state_space)
     workspace.robots.append(robot)
     return robot
 

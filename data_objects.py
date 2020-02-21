@@ -178,14 +178,15 @@ class StateEstimate:
             print("ERROR: requested state not found for 'get_two_sigma_value' in data_objects")
             return None
 
-    def plot_state(self):
-        plt.plot(self.x_1, self.x_2, 'd', color='maroon', markerfacecolor='none')
+    def plot_state(self, color):
+        plt.plot(self.x_1, self.x_2, 'd', color=color, markerfacecolor='none')
 
-    def get_covariance_ellipse(self):
+    def get_covariance_ellipse(self, color='b'):
         major_axis = 2*self.x1_2sigma * sqrt(5.991)
         minor_axis = 2 * self.x2_2sigma * sqrt(5.991)
 
-        return Ellipse(xy=(self.x_1, self.x_2), width=major_axis, height=minor_axis, edgecolor='b', fc='None', ls='--')
+        return Ellipse(xy=(self.x_1, self.x_2), width=major_axis, height=minor_axis, edgecolor=color, fc='None',
+                       ls='--')
 
 
 class Measurement:
