@@ -1,26 +1,18 @@
 import matplotlib.pyplot as plt
 
 
-class DataModel:
+class TruthModel:
 
-    def __init__(self, ground_truth=None, state_estimate=None, true_measurements=None, noisy_measurements=None):
+    def __init__(self, ground_truth=None, state_estimate=None, true_measurements=None):
         self.ground_truth = ground_truth
         self.state_estimate = state_estimate
         self.true_measurements = true_measurements
-        self.noisy_measurements = noisy_measurements
-
-    def plot_noisy_measurements(self):
-        x_coordinates = [x.y_1 for x in self.noisy_measurements]
-        y_coordinates = [y.y_2 for y in self.noisy_measurements]
-
-        plt.plot(x_coordinates, y_coordinates, 'b.', alpha=0.5)
 
     def plot_state_estimate(self):
         x_coordinates = [x.x_1 for x in self.state_estimate]
         y_coordinates = [y.x_2 for y in self.state_estimate]
 
         plt.plot(x_coordinates, y_coordinates, 'd', color='maroon', markerfacecolor='none')
-
 
     def plot_two_sigma(self, state, steps=None, marker='b--'):
         """

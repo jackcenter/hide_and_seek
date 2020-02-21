@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from data_objects import InformationEstimate
+from estimation_tools import get_noisy_measurement
+import information_filter as IF
+
 
 class Workspace:
     def __init__(self, name, boundary_coordinates, obstacle_coordinates):
@@ -78,7 +82,22 @@ class TwoDimensionalRobot:
         self.state = state
         self.team = team
         self.color = color
+
         self.state_names = list(state.keys())
+        self.measurement_noise = None
+        self.i_init = np.array([
+            [0],
+            [0]
+        ])
+        self.I_init = np.array([
+            [0, 0],
+            [0, 0]
+        ])
+        self.information_list = [InformationEstimate.create_from_array(0, self.i_init, self.I_init)]
+
+        self.truth_model = None
+        self.current_measurement_step = 0
+        self.measurement_list = []
 
     def plot_initial(self):
         """
@@ -89,6 +108,12 @@ class TwoDimensionalRobot:
         y_i = self.state.get(self.state_names[1])
         plt.plot(x_i, y_i, self.color + 'x')
 
+    def plot_measurements(self):
+        x_coordinates = [x.y_1 for x in self.measurement_list]
+        y_coordinates = [y.y_2 for y in self.measurement_list]
+
+        plt.plot(x_coordinates, y_coordinates, 'b.', alpha=0.5)
+
     def return_state_array(self):
         """
         converts and returns the robot's state into a numpy array
@@ -96,3 +121,14 @@ class TwoDimensionalRobot:
         """
         state_list = list(self.state.values())
         return np.array(state_list).reshape((-1, 1))
+
+    def get_measurement(self):
+        true_measurement = self.truth_model.true_measurements[self.current_measurement_step]
+        noisy_measurement = get_noisy_measurement(self.measurement_noise, true_measurement)
+        self.measurement_list.append(noisy_measurement)
+        self.current_measurement_step += 1
+        return noisy_measurement
+
+    def run_filter(self, state_space):
+        y = self.get_measurement()
+        self.information_list.append(IF.run(state_space, self.information_list[-1], y))

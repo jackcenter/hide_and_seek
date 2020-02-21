@@ -1,11 +1,10 @@
 from matplotlib import pyplot as plt
 import numpy as np
 
-from data_objects import GroundTruth, InformationEstimate
-from data_model import DataModel
-from estimation_tools import DiscreteLinearStateSpace, get_time_vector, get_true_measurements, get_noisy_measurements
+from data_objects import GroundTruth
+from data_model import TruthModel
+from estimation_tools import DiscreteLinearStateSpace, get_time_vector, get_true_measurements
 from initialize import initialize_environment, initialize_robot
-import information_filter as IF
 from system_dynamics import get_ground_truth
 
 
@@ -17,12 +16,14 @@ def main():
     plt.figure()
     ax = plt.gca()
 
+    # SETTINGS ===========================
     dt = 1.0
     t0 = 0
     tf = 100
     times = get_time_vector(t0, tf, dt)
     steps = len(times) - 1
 
+    # Robot settings =========================
     i_init = np.array([
         [0],
         [0]
@@ -33,6 +34,7 @@ def main():
         [0, 0]
     ])
 
+    # Init ===================================
     workspace, state_space = setup(dt)
     workspace.plot()
     # plt.show()
@@ -42,27 +44,28 @@ def main():
 
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
     truth_model = build_truth_model(state_space, x0, steps)
-    # TODO: have noisy measurements come from robot base on truth model, and have robot store measurements.
-    # TODO: have noisy measurements be generated real time instead of in advance
-    truth_model.plot_noisy_measurements()
-    # TODO: noisy measurements probably shouldn't be in the truth model, each robot should have them
 
-    # TODO: make seeker hold onto this information so multiple targets can be assessed
-    initializer = InformationEstimate.create_from_array(0, i_init, I_init)
-    information_list = [initializer]
+    # TEST Robot Functionality ===========================================
+    # TODO: fix robot initialization to include all of this
+    seeker.measurement_noise = np.array([
+        [2, 0],
+        [0, 5]
+    ])
+    seeker.truth_model = truth_model
 
-    for y in truth_model.noisy_measurements:
-        information_list.append(IF.run(state_space, information_list[-1], y))
+    for _ in range(0, steps):
+        seeker.run_filter(state_space)
 
+    seeker.plot_measurements()
     state_estimate_list = []
-    for i in information_list[1:-1]:
+    for i in seeker.information_list[1:-1]:
         state_estimate_list.append(i.get_state_estimate())
 
     truth_model.state_estimate = state_estimate_list
-    # truth_model.plot_state_estimate()
 
-    states_of_interest = [1, 29, 99]
+    states_of_interest = [0, 29, 98]
     for i in states_of_interest:
+        # TODO: have robot invert these real time to state estimates
         truth_model.state_estimate[i].plot_state()
         ellipse = truth_model.state_estimate[i].get_covariance_ellipse()
         ax.add_patch(ellipse)
@@ -85,7 +88,10 @@ def setup(dt: float):
     H = np.eye(2)
     M = np.zeros((2, 2))
     Q = np.eye(2)*.001
-    R = np.eye(2)*5
+    R = np.array([
+        [2, 0],
+        [0, 5]
+    ])
 
     state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R, dt)
 
@@ -96,8 +102,7 @@ def build_truth_model(state_space: DiscreteLinearStateSpace, x0: GroundTruth, st
 
     ground_truth_list = get_ground_truth(state_space, x0, steps)
     true_measurements = get_true_measurements(state_space, ground_truth_list)
-    noisy_measurements = get_noisy_measurements(state_space, true_measurements)
-    truth_model = DataModel(ground_truth_list, None, true_measurements, noisy_measurements)
+    truth_model = TruthModel(ground_truth_list, None, true_measurements)
     return truth_model
 
 

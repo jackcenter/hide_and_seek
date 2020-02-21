@@ -60,13 +60,17 @@ def monte_carlo_sample(mu: np.ndarray, r: np.ndarray, t=1):
     return simulated_measurements
 
 
-def get_noisy_measurements(state_space: DiscreteLinearStateSpace, true_measurements: list):
-    R = state_space.R
+def get_noisy_measurement(R: np.ndarray, true_measurement: Measurement):
+    step = true_measurement.step
+    sample = monte_carlo_sample(true_measurement.return_data_array(), R, 1)
+    noisy_measurement = Measurement.create_from_array(step, sample)
+    return noisy_measurement
+
+
+def get_noisy_measurements(R: np.ndarray, true_measurements: list):
     noisy_measurements = list()
     for measurement in true_measurements:
-        step = measurement.step
-        sample = monte_carlo_sample(measurement.return_data_array(), R, 1)
-        noisy_measurement = Measurement.create_from_array(step, sample)
+        noisy_measurement = get_noisy_measurement(R, measurement)
         noisy_measurements.append(noisy_measurement)
 
     return noisy_measurements
