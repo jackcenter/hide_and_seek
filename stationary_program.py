@@ -1,9 +1,11 @@
 from matplotlib import pyplot as plt
 import numpy as np
 
+from channel_filter import ChannelFilter
 from data_objects import GroundTruth
 from data_model import TruthModel
 from estimation_tools import DiscreteLinearStateSpace, get_time_vector, get_true_measurements
+import information_filter as IF
 from initialize import initialize_environment, initialize_seeker, initialize_hider
 from system_dynamics import get_ground_truth
 
@@ -19,7 +21,7 @@ def main():
     # SETTINGS ===========================
     dt = 1.0
     t0 = 0
-    tf = 100
+    tf = 1000
     times = get_time_vector(t0, tf, dt)
     steps = len(times) - 1
 
@@ -41,7 +43,10 @@ def main():
 
     seeker1 = workspace.robots[0]
     seeker2 = workspace.robots[1]
-    hider = workspace.robots[2]
+    seeker3 = workspace.robots[2]
+    hider = workspace.robots[3]
+    # TODO: this should be on the robot
+    channel_12 = ChannelFilter(seeker1, seeker2, hider)
 
     # TODO: make this part of a hider
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
@@ -49,14 +54,20 @@ def main():
     hider.truth_model = truth_model
 
     for _ in range(0, steps):
-        # TODO: state space should be part of the hider
+        # TODO: need all things to happen on individual robots
         seeker1.run_filter(hider)
         seeker2.run_filter(hider)
+        channel_12.update()
+        DDF_update(seeker1, seeker2, channel_12)
+        #DDF_update(seeker2, seeker1, channel_12)
 
     seeker1.plot_measurements()
     seeker2.plot_measurements()
 
-    states_of_interest = [1, 30, 99]
+    for y in seeker1.measurement_list:
+        seeker3.information_list.append(IF.run(hider.state_space, seeker3.information_list[-1], y))
+
+    states_of_interest = [1, -1]
     for i in states_of_interest:
         # TODO: have robot invert these real time to state estimates
         state_estimate1 = seeker1.information_list[i].get_state_estimate()
@@ -69,11 +80,19 @@ def main():
         ellipse = state_estimate2.get_covariance_ellipse(seeker2.color)
         ax.add_patch(ellipse)
 
+        state_estimate3 = seeker3.information_list[i].get_state_estimate()
+        state_estimate3.plot_state(seeker3.color)
+        ellipse = state_estimate3.get_covariance_ellipse(seeker3.color)
+        ax.add_patch(ellipse)
+
     print("State Estimate from Seeker 1: ")
     print(np.around(seeker1.information_list[-1].get_state_estimate().return_data_array(), 2))
     print()
     print("State Estimate from Seeker 2: ")
     print(np.around(seeker2.information_list[-1].get_state_estimate().return_data_array(), 2))
+    print()
+    print("State Estimate from Seeker 3: ")
+    print(np.around(seeker3.information_list[-1].get_state_estimate().return_data_array(), 2))
     plt.show()
 
 
@@ -87,24 +106,25 @@ def setup(dt: float):
 
     # TODO: need a measurement model
     R1 = np.array([
-        [10, 0],
-        [0, 15]
+        [5, 0],
+        [0, 5]
     ])
 
     R2 = np.array([
-        [30, 0],
-        [0, 20]
+        [20, 0],
+        [0, 10]
     ])
 
     initialize_seeker('seeker_1', seeker1_pose_file, 'darkred', workspace, R1)
     initialize_seeker('seeker_2', seeker2_pose_file, 'midnightblue', workspace, R2)
+    initialize_seeker('seeker_3', seeker1_pose_file, 'k', workspace, R1)
 
     # TODO: need a dynamics model
     F = np.eye(2)
     G = np.zeros((2, 2))
     H = np.eye(2)
     M = np.zeros((2, 2))
-    Q = np.eye(2)*.001
+    Q = np.eye(2)*.000001
     R = np.array([
         [2, 0],
         [0, 5]
@@ -123,6 +143,17 @@ def build_truth_model(state_space: DiscreteLinearStateSpace, x0: GroundTruth, st
     true_measurements = get_true_measurements(state_space, ground_truth_list)
     truth_model = TruthModel(ground_truth_list, None, true_measurements)
     return truth_model
+
+
+# TODO: should be an exchange of info updated on the robot
+def DDF_update(robot1, robot2, channel_filter):
+    # TODO: should be a summation in here for more sensors
+    y1_k1_ddf = robot1.information_list[-1].return_data_array() +\
+                robot2.information_list[-1].return_data_array() - channel_filter.y_ij
+    Y1_k1_ddf = robot1.information_list[-1].return_information_matrix() + \
+                robot2.information_list[-1].return_information_matrix() - channel_filter.Y_ij
+
+    robot1.information_list[-1].update(y1_k1_ddf, Y1_k1_ddf)
 
 
 if __name__ == '__main__':

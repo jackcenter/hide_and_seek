@@ -83,17 +83,7 @@ class TwoDimensionalRobot:
         self.color = color
 
         self.state_names = list(state.keys())
-        self.i_init = np.array([
-            [0],
-            [0]
-        ])
-        self.I_init = np.array([
-            [0, 0],
-            [0, 0]
-        ])
-        self.information_list = [InformationEstimate.create_from_array(0, self.i_init, self.I_init)]
 
-        self.truth_model = None
         self.current_measurement_step = 0
         self.measurement_list = []
 
@@ -120,6 +110,17 @@ class Seeker(TwoDimensionalRobot):
         super().__init__(name, state, color)
         self.R = R
 
+        # TODO: this is a bit static and only considers one target
+        self.i_init = np.array([
+            [0],
+            [0]
+        ])
+        self.I_init = np.array([
+            [0, 0],
+            [0, 0]
+        ])
+        self.information_list = [InformationEstimate.create_from_array(0, self.i_init, self.I_init)]
+
     def plot_measurements(self):
         x_coordinates = [x.y_1 for x in self.measurement_list]
         y_coordinates = [y.y_2 for y in self.measurement_list]
@@ -133,7 +134,6 @@ class Seeker(TwoDimensionalRobot):
         return noisy_measurement
 
     def run_filter(self, target):
-        # TODO: run filter on a target robot by aligning current step with truth model
         # TODO: base on the target, a different information list should be picked
         current_step = self.information_list[-1].step
         true_measurement = next((x for x in target.truth_model.true_measurements if x.step == current_step + 1), None)

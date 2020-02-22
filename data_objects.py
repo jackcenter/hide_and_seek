@@ -95,6 +95,10 @@ class InformationEstimate:
         state_array = covariance @ self.return_data_array()
         return StateEstimate.create_from_array(self.step, state_array, covariance)
 
+    def update(self, info_array: np.ndarray, info_matrix: np.ndarray):
+        self.i_1, self.i_2 = info_array[0][0], info_array[1][0]
+        self.I_matrix = info_matrix
+
 
 class StateEstimate:
     """
