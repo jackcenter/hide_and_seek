@@ -76,7 +76,6 @@ class Obstacle:
         plt.plot(x_coordinates, y_coordinates)
 
 
-# TODO: separate hiders and seekers
 class TwoDimensionalRobot:
     def __init__(self, name: str, state: dict, color: str):
         self.name = name
@@ -111,7 +110,7 @@ class Seeker(TwoDimensionalRobot):
         super().__init__(name, state, color)
         self.R = R
 
-        # TODO: this is a bit static and only considers one target
+        # TODO: this is a bit static
         self.i_init = np.array([
             [0],
             [0]
@@ -136,7 +135,6 @@ class Seeker(TwoDimensionalRobot):
         return noisy_measurement
 
     def run_filter(self, target):
-        # TODO: base on the target, a different information list should be picked
         current_step = self.information_list[-1].step
         true_measurement = next((x for x in target.truth_model.true_measurements if x.step == current_step + 1), None)
         y = self.get_measurement(true_measurement)
@@ -152,15 +150,18 @@ class Seeker(TwoDimensionalRobot):
         channel_filter = ChannelFilter(self, robot_j, target)
         self.channel_filter_dict[robot_j.name] = channel_filter
 
-    def update_channel_filter(self, robot_j):
-        self.channel_filter_dict[robot_j.name].update()
+    def send_update(self, robot_j):
+        self.channel_filter_dict[robot_j.name].update_and_send()
+
+    def receive_update(self, robot_j):
+        self.channel_filter_dict[robot_j.name].receive_and_update()
 
     def fuse_data(self, robot_j):
-        # TODO: should be a summation in here for more sensors
+        # TODO: should be a summation in here for more sensors, but works as is
         cf = self.channel_filter_dict[robot_j.name]
         y1_k1_ddf = self.information_list[-1].return_data_array() + \
                     robot_j.information_list[-1].return_data_array() - cf.y_ij
-        Y1_k1_ddf = robot_j.information_list[-1].return_information_matrix() + \
+        Y1_k1_ddf = self.information_list[-1].return_information_matrix() + \
                     robot_j.information_list[-1].return_information_matrix() - cf.Y_ij
 
         self.information_list[-1].update(y1_k1_ddf, Y1_k1_ddf)
