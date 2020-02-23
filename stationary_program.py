@@ -43,23 +43,28 @@ def main():
 
     seeker1 = workspace.robots[0]
     seeker2 = workspace.robots[1]
-    seeker3 = workspace.robots[2]
+    seeker3 = workspace.robots[2]       # control to see if channel filter helps
     hider = workspace.robots[3]
     # TODO: this should be on the robot
-    channel_12 = ChannelFilter(seeker1, seeker2, hider)
+    # channel_12 = ChannelFilter(seeker1, seeker2, hider)
+    seeker1.create_channel_filter(seeker2, hider)
 
-    # TODO: make this part of a hider
+    # TODO: make this a method in the hider
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
     truth_model = build_truth_model(state_space, x0, steps)
     hider.truth_model = truth_model
 
     for _ in range(0, steps):
         # TODO: need all things to happen on individual robots
+        # Run Local Updates ====================================================
         seeker1.run_filter(hider)
         seeker2.run_filter(hider)
-        channel_12.update()
-        DDF_update(seeker1, seeker2, channel_12)
-        #DDF_update(seeker2, seeker1, channel_12)
+        # Run channel filters ==================================================
+        seeker1.update_channel_filter(seeker2)
+        # Fuse data ============================================================
+        seeker1.fuse_data(seeker2)
+        # DDF_update(seeker1, seeker2, channel_12)
+        # DDF_update(seeker2, seeker1, channel_12)
 
     seeker1.plot_measurements()
     seeker2.plot_measurements()
@@ -105,14 +110,20 @@ def setup(dt: float):
     workspace = initialize_environment(map_file)
 
     # TODO: need a measurement model
+    F = np.eye(2)
+    G = np.zeros((2, 2))
+    H = np.eye(2)
+    M = np.zeros((2, 2))
+    Q = np.eye(2)*.000001
+
     R1 = np.array([
         [5, 0],
         [0, 5]
     ])
 
     R2 = np.array([
-        [20, 0],
-        [0, 10]
+        [200, 0],
+        [0, 100]
     ])
 
     initialize_seeker('seeker_1', seeker1_pose_file, 'darkred', workspace, R1)
@@ -120,18 +131,8 @@ def setup(dt: float):
     initialize_seeker('seeker_3', seeker1_pose_file, 'k', workspace, R1)
 
     # TODO: need a dynamics model
-    F = np.eye(2)
-    G = np.zeros((2, 2))
-    H = np.eye(2)
-    M = np.zeros((2, 2))
-    Q = np.eye(2)*.000001
-    R = np.array([
-        [2, 0],
-        [0, 5]
-    ])
-
-    state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R, dt)
-    # TODO: don't really need R here
+    state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R1, dt)
+    # TODO: don't really need R here, make a target class without?
     initialize_hider('hider_1', hider_pose_file, 'r', workspace, state_space)
 
     return workspace, state_space
@@ -146,14 +147,14 @@ def build_truth_model(state_space: DiscreteLinearStateSpace, x0: GroundTruth, st
 
 
 # TODO: should be an exchange of info updated on the robot
-def DDF_update(robot1, robot2, channel_filter):
-    # TODO: should be a summation in here for more sensors
-    y1_k1_ddf = robot1.information_list[-1].return_data_array() +\
-                robot2.information_list[-1].return_data_array() - channel_filter.y_ij
-    Y1_k1_ddf = robot1.information_list[-1].return_information_matrix() + \
-                robot2.information_list[-1].return_information_matrix() - channel_filter.Y_ij
-
-    robot1.information_list[-1].update(y1_k1_ddf, Y1_k1_ddf)
+# def DDF_update(robot1, robot2, channel_filter):
+#     # TODO: should be a summation in here for more sensors
+#     y1_k1_ddf = robot1.information_list[-1].return_data_array() +\
+#                 robot2.information_list[-1].return_data_array() - channel_filter.y_ij
+#     Y1_k1_ddf = robot1.information_list[-1].return_information_matrix() + \
+#                 robot2.information_list[-1].return_information_matrix() - channel_filter.Y_ij
+#
+#     robot1.information_list[-1].update(y1_k1_ddf, Y1_k1_ddf)
 
 
 if __name__ == '__main__':

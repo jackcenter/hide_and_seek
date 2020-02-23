@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from channel_filter import ChannelFilter
 from data_objects import InformationEstimate, Measurement
 from estimation_tools import get_noisy_measurement
 import information_filter as IF
@@ -120,6 +121,7 @@ class Seeker(TwoDimensionalRobot):
             [0, 0]
         ])
         self.information_list = [InformationEstimate.create_from_array(0, self.i_init, self.I_init)]
+        self.channel_filter_dict = {}
 
     def plot_measurements(self):
         x_coordinates = [x.y_1 for x in self.measurement_list]
@@ -139,6 +141,29 @@ class Seeker(TwoDimensionalRobot):
         true_measurement = next((x for x in target.truth_model.true_measurements if x.step == current_step + 1), None)
         y = self.get_measurement(true_measurement)
         self.information_list.append(IF.run(target.state_space, self.information_list[-1], y))
+
+    def create_channel_filter(self, robot_j, target):
+        """
+        adds a new channel filter for a single target to the
+        :param robot_j:
+        :param target:
+        :return:
+        """
+        channel_filter = ChannelFilter(self, robot_j, target)
+        self.channel_filter_dict[robot_j.name] = channel_filter
+
+    def update_channel_filter(self, robot_j):
+        self.channel_filter_dict[robot_j.name].update()
+
+    def fuse_data(self, robot_j):
+        # TODO: should be a summation in here for more sensors
+        cf = self.channel_filter_dict[robot_j.name]
+        y1_k1_ddf = self.information_list[-1].return_data_array() + \
+                    robot_j.information_list[-1].return_data_array() - cf.y_ij
+        Y1_k1_ddf = robot_j.information_list[-1].return_information_matrix() + \
+                    robot_j.information_list[-1].return_information_matrix() - cf.Y_ij
+
+        self.information_list[-1].update(y1_k1_ddf, Y1_k1_ddf)
 
 
 class Hider(TwoDimensionalRobot):
