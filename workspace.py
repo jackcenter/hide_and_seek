@@ -150,21 +150,29 @@ class Seeker(TwoDimensionalRobot):
         channel_filter = ChannelFilter(self, robot_j, target)
         self.channel_filter_dict[robot_j.name] = channel_filter
 
-    def send_update(self, robot_j):
-        self.channel_filter_dict[robot_j.name].update_and_send()
+    def send_update(self):
+        for cf in self.channel_filter_dict.values():
+            cf.update_and_send()
 
-    def receive_update(self, robot_j):
-        self.channel_filter_dict[robot_j.name].receive_and_update()
+    def receive_update(self):
+        for cf in self.channel_filter_dict.values():
+            cf.receive_and_update()
 
-    def fuse_data(self, robot_j):
+    def fuse_data(self):
         # TODO: should be a summation in here for more sensors, but works as is
-        cf = self.channel_filter_dict[robot_j.name]
-        y1_k1_ddf = self.information_list[-1].return_data_array() + \
-                    robot_j.information_list[-1].return_data_array() - cf.y_ij
-        Y1_k1_ddf = self.information_list[-1].return_information_matrix() + \
-                    robot_j.information_list[-1].return_information_matrix() - cf.Y_ij
+        y_k1_p = self.information_list[-1].return_data_array()
+        Y_k1_p = self.information_list[-1].return_information_matrix()
 
-        self.information_list[-1].update(y1_k1_ddf, Y1_k1_ddf)
+        yj_novel_sum = 0
+        Yj_novel_sum = 0
+
+        for cf in self.channel_filter_dict.values():
+            yj_novel_sum += cf.yj_novel
+            Yj_novel_sum += cf.Yj_novel
+
+        y_k1_fused = y_k1_p + yj_novel_sum
+        Y_k1_fused = Y_k1_p + Yj_novel_sum
+        self.information_list[-1].update(y_k1_fused, Y_k1_fused)
 
 
 class Hider(TwoDimensionalRobot):

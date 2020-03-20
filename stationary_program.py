@@ -14,7 +14,7 @@ def main():
     ax = plt.gca()
 
     # SETTINGS ===========================
-    dt = 1.0
+    dt = 1
     t0 = 0
     tf = 10
     times = get_time_vector(t0, tf, dt)
@@ -38,16 +38,23 @@ def main():
 
     seeker1 = workspace.robots[0]
     seeker2 = workspace.robots[1]
-    seeker3 = workspace.robots[2]       # control to see if channel filter helps
+    seeker3 = workspace.robots[2]
     seeker4 = workspace.robots[3]
-    hider = workspace.robots[4]
+    seeker5 = workspace.robots[4]
+
+    seeker_list = [seeker1, seeker2, seeker3, seeker4, seeker5]
+    seekerSolo = workspace.robots[5]
+    hider = workspace.robots[6]
 
     # TODO: make this a method based on a list of neighbors
     seeker1.create_channel_filter(seeker2, hider)
     seeker2.create_channel_filter(seeker1, hider)
-
-    seeker1.create_channel_filter(seeker4, hider)
-    seeker4.create_channel_filter(seeker1, hider)
+    seeker2.create_channel_filter(seeker3, hider)
+    seeker3.create_channel_filter(seeker2, hider)
+    seeker3.create_channel_filter(seeker4, hider)
+    seeker4.create_channel_filter(seeker3, hider)
+    seeker4.create_channel_filter(seeker5, hider)
+    seeker5.create_channel_filter(seeker4, hider)
 
     # TODO: make this a method in the hider
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
@@ -56,77 +63,55 @@ def main():
 
     for _ in range(0, steps):
         # Run Local Updates ====================================================
-        seeker1.run_filter(hider)
-        seeker2.run_filter(hider)
-        seeker4.run_filter(hider)
-
-        # Run channel filters ==================================================
-        seeker1.send_update(seeker2)
-        seeker1.send_update(seeker4)
-
-        seeker2.send_update(seeker1)
-        seeker4.send_update(seeker1)
-
-        # Fuse data ============================================================
-        seeker1.receive_update(seeker2)
-        seeker1.receive_update(seeker4)
-
-        # TODO: fix fusing for multiple robots? 1 and 4 give same state estimate
-        seeker2.receive_update(seeker1)
-        seeker4.receive_update(seeker1)
-
-    seeker1.plot_measurements()
-    seeker2.plot_measurements()
-    seeker4.plot_measurements()
+        for robot in seeker_list:
+            robot.run_filter(hider)
+            robot.send_update()
+        # Fuse Data ============================================================
+        for robot in seeker_list:
+            robot.receive_update()
+            robot.fuse_data()
+            robot.plot_measurements()
 
     # Set control seeker ========================================================
-    seeker3.measurement_list = seeker1.measurement_list
-    for y in seeker3.measurement_list:
-        seeker3.information_list.append(IF.run(hider.state_space, seeker3.information_list[-1], y))
+    seekerSolo.measurement_list = seeker3.measurement_list
+    for y in seekerSolo.measurement_list:
+        seekerSolo.information_list.append(IF.run(hider.state_space, seekerSolo.information_list[-1], y))
 
     # Plot results ==============================================================
     states_of_interest = [-1]
     for i in states_of_interest:
         # TODO: have robot invert these real time to state estimates
-        state_estimate1 = seeker1.information_list[i].get_state_estimate()
-        state_estimate1.plot_state(seeker1.color)
-        ellipse = state_estimate1.get_covariance_ellipse(seeker1.color)
+        for robot in seeker_list:
+            state_estimate = robot.information_list[i].get_state_estimate()
+            state_estimate.plot_state(robot.color)
+            ellipse = state_estimate.get_covariance_ellipse(robot.color)
+            ax.add_patch(ellipse)
+
+        state_estimate = seekerSolo.information_list[i].get_state_estimate()
+        state_estimate.plot_state(seekerSolo.color)
+        ellipse = state_estimate.get_covariance_ellipse(seekerSolo.color)
         ax.add_patch(ellipse)
 
-        state_estimate2 = seeker2.information_list[i].get_state_estimate()
-        state_estimate2.plot_state(seeker2.color)
-        ellipse = state_estimate2.get_covariance_ellipse(seeker2.color)
-        ax.add_patch(ellipse)
+    for robot in seeker_list:
+        print("State Estimate from {}: ".format(robot.name))
+        print(np.around(robot.information_list[-1].get_state_estimate().return_data_array(), 2))
+        print()
 
-        state_estimate3 = seeker3.information_list[i].get_state_estimate()
-        state_estimate3.plot_state(seeker3.color)
-        ellipse = state_estimate3.get_covariance_ellipse(seeker3.color)
-        ax.add_patch(ellipse)
-
-        state_estimate4 = seeker4.information_list[i].get_state_estimate()
-        state_estimate4.plot_state(seeker4.color)
-        ellipse = state_estimate4.get_covariance_ellipse(seeker4.color)
-        ax.add_patch(ellipse)
-
-    print("State Estimate from Seeker 1 with two channel filters: ")
-    print(np.around(seeker1.information_list[-1].get_state_estimate().return_data_array(), 2))
+    print("State Estimate from {}: ".format(seekerSolo.name))
+    print(np.around(seekerSolo.information_list[-1].get_state_estimate().return_data_array(), 2))
     print()
-    print("State Estimate from Seeker 2 with one channel filter: ")
-    print(np.around(seeker2.information_list[-1].get_state_estimate().return_data_array(), 2))
-    print()
-    print("State Estimate from Seeker 3 with no channel filter \n(identical measurements to seeker 1): ")
-    print(np.around(seeker3.information_list[-1].get_state_estimate().return_data_array(), 2))
-    print()
-    print("State Estimate from Seeker 4 with one channel filter: ")
-    print(np.around(seeker4.information_list[-1].get_state_estimate().return_data_array(), 2))
+
     plt.show()
 
 
 def setup(dt: float):
     map_file = 'empty_map.txt'
-    seeker1_pose_file = 'pose_m30_m30.txt'
-    seeker2_pose_file = 'pose_m20_10.txt'
-    seeker4_pose_file = 'pose_m30_20.txt'
+    seeker1_pose_file = 'pose_m40_40.txt'
+    seeker2_pose_file = 'pose_m20_20.txt'
+    seeker3_pose_file = 'pose_m40_0.txt'
+    seeker4_pose_file = 'pose_m20_m5.txt'
+    seeker5_pose_file = 'pose_m40_m40.txt'
+    seeker6_pose_file = 'pose_m30_0.txt'
     hider_pose_file = 'pose_30_0.txt'
 
     workspace = initialize_environment(map_file)
@@ -139,19 +124,21 @@ def setup(dt: float):
     Q = np.eye(2)*.000001
 
     R1 = np.array([
-        [5, 0],
-        [0, 5]
+        [250, 0],
+        [0, 250]
     ])
 
     R2 = np.array([
-        [10, 0],
-        [0, 10]
+        [500, 0],
+        [0, 500]
     ])
 
     initialize_seeker('seeker_1', seeker1_pose_file, 'darkred', workspace, R1)
-    initialize_seeker('seeker_2', seeker2_pose_file, 'midnightblue', workspace, R2)
-    initialize_seeker('seeker_3', seeker1_pose_file, 'k', workspace, R1)
+    initialize_seeker('seeker_2', seeker2_pose_file, 'darkorange', workspace, R2)
+    initialize_seeker('seeker_3', seeker3_pose_file, 'darkgoldenrod', workspace, R2)
     initialize_seeker('seeker_4', seeker4_pose_file, 'rebeccapurple', workspace, R2)
+    initialize_seeker('seeker_5', seeker5_pose_file, 'darkgreen', workspace, R1)
+    initialize_seeker('seeker_6', seeker6_pose_file, 'k', workspace, R1)
 
     # TODO: need a dynamics model
     state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R1, dt)
