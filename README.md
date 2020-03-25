@@ -26,8 +26,7 @@ Then follow the prompts to view the desired example. The following is a snapshot
  
 >$ [1]: Static Process, Stationary Linear Sensors
 
-![Example](/images/Example.png)
-Format: ![Alt Text](url)
+![Example image](/images/Example.png)
  
 
 ## Reporting Issues
