@@ -39,7 +39,7 @@ class Workspace:
         y_coordinates = [i[1] for i in self.boundary_coordinates]
         y_coordinates.append(self.boundary_coordinates[0][1])
 
-        plt.plot(x_coordinates, y_coordinates, 'k--')
+        plt.plot(x_coordinates, y_coordinates, 'k-')
 
         for i in range(0, len(self.obstacles)):
             self.obstacles[i].plot()
@@ -103,6 +103,13 @@ class TwoDimensionalRobot:
         """
         state_list = list(self.state.values())
         return np.array(state_list).reshape((-1, 1))
+
+    def return_state_list(self):
+        """
+        converts and returns the robot's state into a numpy array
+        :return: n x 1 numpy array of current state variables
+        """
+        return list(self.state.values())
 
 
 class Seeker(TwoDimensionalRobot):

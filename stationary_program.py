@@ -1,4 +1,8 @@
+from math import sqrt
+
 from matplotlib import pyplot as plt
+from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Ellipse
 import numpy as np
 
 from data_objects import GroundTruth
@@ -10,14 +14,14 @@ from system_dynamics import get_ground_truth
 
 
 def main():
-    plt.figure()
-    ax = plt.gca()
+    # plt.figure()
+    # ax = plt.gca()
 
     # SETTINGS ===========================
     dt = 1
     t0 = 0
     tf = 10
-    times = get_time_vector(t0, tf, dt)
+    times = get_time_vector(t0, tf + dt, dt)
     steps = len(times) - 1
 
     # Robot settings =========================
@@ -33,8 +37,6 @@ def main():
 
     # Init ===================================
     workspace, state_space = setup(dt)
-    workspace.plot()
-    # plt.show()
 
     seeker1 = workspace.robots[0]
     seeker2 = workspace.robots[1]
@@ -46,15 +48,14 @@ def main():
     seekerSolo = workspace.robots[5]
     hider = workspace.robots[6]
 
-    # TODO: make this a method based on a list of neighbors
-    seeker1.create_channel_filter(seeker2, hider)
-    seeker2.create_channel_filter(seeker1, hider)
-    seeker2.create_channel_filter(seeker3, hider)
-    seeker3.create_channel_filter(seeker2, hider)
-    seeker3.create_channel_filter(seeker4, hider)
-    seeker4.create_channel_filter(seeker3, hider)
-    seeker4.create_channel_filter(seeker5, hider)
-    seeker5.create_channel_filter(seeker4, hider)
+    # establishes where two way communication exists
+    comm_lines = [
+        # (seeker1, seeker2),
+        (seeker2, seeker3),
+        (seeker3, seeker4),
+        (seeker4, seeker5),
+    ]
+    create_channel_filters(comm_lines, hider)
 
     # TODO: make this a method in the hider
     x0 = GroundTruth.create_from_array(0, hider.return_state_array())
@@ -70,27 +71,40 @@ def main():
         for robot in seeker_list:
             robot.receive_update()
             robot.fuse_data()
-            robot.plot_measurements()
+            # robot.plot_measurements()
 
     # Set control seeker ========================================================
     seekerSolo.measurement_list = seeker3.measurement_list
     for y in seekerSolo.measurement_list:
         seekerSolo.information_list.append(IF.run(hider.state_space, seekerSolo.information_list[-1], y))
 
-    # Plot results ==============================================================
-    states_of_interest = [-1]
-    for i in states_of_interest:
+# =====================================================================
+    states_of_interest = times[1:-1]
+    plotter_list = []
+    for robot in seeker_list:
+        state_estimate_list = []
+        ellipse_list = []
+        for i in states_of_interest:
         # TODO: have robot invert these real time to state estimates
-        for robot in seeker_list:
             state_estimate = robot.information_list[i].get_state_estimate()
-            state_estimate.plot_state(robot.color)
             ellipse = state_estimate.get_covariance_ellipse(robot.color)
-            ax.add_patch(ellipse)
+            state_estimate_list.append(state_estimate)
+            ellipse_list.append(ellipse)
 
+        plotter = Plotter(robot, states_of_interest, state_estimate_list, ellipse_list)
+        plotter_list.append(plotter)
+
+    state_estimate_list = []
+    ellipse_list = []
+    for i in states_of_interest:
         state_estimate = seekerSolo.information_list[i].get_state_estimate()
-        state_estimate.plot_state(seekerSolo.color)
         ellipse = state_estimate.get_covariance_ellipse(seekerSolo.color)
-        ax.add_patch(ellipse)
+        state_estimate_list.append(state_estimate)
+        ellipse_list.append(ellipse)
+
+    plotter = Plotter(seekerSolo, states_of_interest, state_estimate_list, ellipse_list)
+    plotter_list.append(plotter)
+# =======================================================================
 
     for robot in seeker_list:
         print("State Estimate from {}: ".format(robot.name))
@@ -101,7 +115,83 @@ def main():
     print(np.around(seekerSolo.information_list[-1].get_state_estimate().return_data_array(), 2))
     print()
 
+    # Animate results =============================================================
+    state_estimate_anim = []
+    for i in states_of_interest:
+        # TODO: have robot invert these real time to state estimates
+        robot = seeker_list[0]
+        state_estimate_anim.append(robot.information_list[i].get_state_estimate())
+
+    fig, ax = plt.subplots()
+    plt.title("Stationary Hiders and Seekers with Noisy Position Measurements")
+    plt.xlabel("x position [m]")
+    plt.ylabel("y position [m]")
+    plt.axis("equal")
+    legend_labels = [
+        "Map Border",
+        "Seeker 1 Position",
+        "Seeker 2 Position",
+        "Seeker 3 Position",
+        "Seeker 4 Position",
+        "Seeker 5 Position",
+        "Control Position",
+        "Hider Position",
+        "State Estimate\nwith " r'$2\sigma$ bound',
+        "Comm Lines"
+    ]
+
+    ax.set_xlim([-55, 55])
+    ax.set_ylim([-55, 55])
+
+    workspace.plot()
+    pos1, = ax.plot([], [], 'd', mfc=seeker1.color, mec='None')
+    plot_comm_lines(comm_lines)
+    plt.legend(legend_labels, loc="upper left")
+
+    pos2, = ax.plot([], [], 'd', mfc=seeker2.color, mec='None')
+    pos3, = ax.plot([], [], 'd', mfc=seeker3.color, mec='None')
+    pos4, = ax.plot([], [], 'd', mfc=seeker4.color, mec='None')
+    pos5, = ax.plot([], [], 'd', mfc=seeker5.color, mec='None')
+    pos6, = ax.plot([], [], 'd', mfc=seekerSolo.color, mec='None')
+    lines = [pos1, pos2, pos3, pos4, pos5, pos6]
+
+    patch1 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seeker1.color, fc='None', ls='--')
+    patch2 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seeker2.color, fc='None', ls='--')
+    patch3 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seeker3.color, fc='None', ls='--')
+    patch4 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seeker4.color, fc='None', ls='--')
+    patch5 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seeker5.color, fc='None', ls='--')
+    patch6 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seekerSolo.color, fc='None', ls='--')
+    patches = [patch1, patch2, patch3, patch4, patch5, patch6]
+
+    for patch in patches:
+        ax.add_patch(patch)
+
+    count_text = ax.text(15, -45, "Current Step: ")
+    count_text.set_bbox(dict(facecolor='white'))
+
+    anim = FuncAnimation(fig, animate, frames=len(states_of_interest), fargs=[lines, patches, plotter_list, count_text],
+                         interval=1000, blit=True, repeat_delay=5000)
+
     plt.show()
+
+
+def animate(i, lines, patches, plotter, title):
+
+    title.set_text("Current Step: {}".format(i + 1))
+    for lnum, line in enumerate(lines):
+        x, y = plotter[lnum].state_list[i].return_data_list()
+        line.set_data(x, y)
+
+    for pnum, patch in enumerate(patches):
+        x, y = plotter[pnum].state_list[i].return_data_list()
+        width = 2 * plotter[pnum].state_list[i].x1_2sigma * sqrt(5.991)
+        height = 2 * plotter[pnum].state_list[i].x2_2sigma * sqrt(5.991)
+        patch.center = (x, y)
+        patch.width = width
+        patch.height = height
+
+    # return lines + [title]
+    return lines + patches + [title]
 
 
 def setup(dt: float):
@@ -111,7 +201,7 @@ def setup(dt: float):
     seeker3_pose_file = 'pose_m40_0.txt'
     seeker4_pose_file = 'pose_m20_m5.txt'
     seeker5_pose_file = 'pose_m40_m40.txt'
-    seeker6_pose_file = 'pose_m30_0.txt'
+    seeker6_pose_file = 'pose_m25_5.txt'
     hider_pose_file = 'pose_30_0.txt'
 
     workspace = initialize_environment(map_file)
@@ -124,13 +214,13 @@ def setup(dt: float):
     Q = np.eye(2)*.000001
 
     R1 = np.array([
-        [250, 0],
-        [0, 250]
+        [500, 0],
+        [0, 500]
     ])
 
     R2 = np.array([
-        [500, 0],
-        [0, 500]
+        [250, 0],
+        [0, 250]
     ])
 
     initialize_seeker('seeker_1', seeker1_pose_file, 'darkred', workspace, R1)
@@ -148,12 +238,40 @@ def setup(dt: float):
     return workspace, state_space
 
 
+def create_channel_filters(comm_lines, target):
+    for line in comm_lines:
+        line[0].create_channel_filter(line[1], target)
+        line[1].create_channel_filter(line[0], target)
+
+
 def build_truth_model(state_space: DiscreteLinearStateSpace, x0: GroundTruth, steps: int):
 
     ground_truth_list = get_ground_truth(state_space, x0, steps)
     true_measurements = get_true_measurements(state_space, ground_truth_list)
     truth_model = TruthModel(ground_truth_list, None, true_measurements)
     return truth_model
+
+
+def plot_comm_lines(comm_lines, line_style='b--'):
+    for line in comm_lines:
+        coords1 = line[0].return_state_list()
+        coords2 = line[1].return_state_list()
+
+        x_ords = [coords1[0], coords2[0]]
+        y_ords = [coords1[1], coords2[1]]
+
+        plt.plot(x_ords, y_ords, line_style, alpha=0.5)
+
+
+
+class Plotter:
+    def __init__(self, robot, steps: list, states: list, two_sigmas: list, state_names=None):
+        self.name = robot.name
+        self.step_list = steps
+        self.state_list = states
+        self.two_sigma_list = two_sigmas
+        self.color = robot.color
+        self.state_names = state_names
 
 
 if __name__ == '__main__':

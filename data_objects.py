@@ -161,6 +161,14 @@ class StateEstimate:
             [self.x_2],
         ])
 
+    def return_data_list(self):
+        """
+        provides intuitive and usefully formatted access to the state estimate data.
+        :return: the state estimate data as a list
+        """
+        return [self.x_1, self.x_2]
+
+
     def return_covariance_array(self):
         """
         provides intuitive access to the covariance matrix
