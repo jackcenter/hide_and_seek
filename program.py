@@ -21,7 +21,7 @@ def print_header():
 
 def get_user_input():
     print('This program runs the following exercises:')
-    print(' [1]: Stationary')
+    print(' [1]: Static Process, Stationary Linear Sensors')
     print()
 
     cmd = input(' Select an exercise would you like to run: ')
@@ -32,7 +32,7 @@ def get_user_input():
 
 def interpret_command(cmd):
     if cmd == '1':      # path planning
-        os.system("python stationary_program.py")
+        os.system("python static_linear_program.py")
 
     else:
         print(' ERROR: unexpected command...')
