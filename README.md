@@ -37,7 +37,7 @@ Use the [GitHub issue tracker](https://github.com/jackcenter/hide_and_seek/issue
 
 ## Licence
 This project operates under the MIT License. For more information see 
-[LICENSE.txt](https://github.com/jackcenter/hide_and_seek/blob/master/LICENSE.txt)
+[LICENSE](https://github.com/jackcenter/hide_and_seek/blob/master/LICENSE.txt)
 
 ## Author
 Jack Center
