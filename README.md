@@ -29,7 +29,7 @@ Then follow the prompts to view the desired example. The following is a snapshot
 >$ \
 >$ Select an exercise would you like to run: 1 
 
-![Example image](/images/Example2.png) 
+![Example image](/images/Example.png) 
 
 The seekers positions on the left side of the map are marked by x's. The hider's position is marked by a red x on the
 right side of the screen. The seekers are receiving noisy, linear 2-D position measurements from the hider, which is not
