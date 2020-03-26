@@ -71,12 +71,11 @@ def main():
         for robot in seeker_list:
             robot.receive_update()
             robot.fuse_data()
-            # robot.plot_measurements()
 
     # Set control seeker ========================================================
     seekerSolo.measurement_list = seeker3.measurement_list
     for y in seekerSolo.measurement_list:
-        seekerSolo.information_list.append(IF.run(hider.state_space, seekerSolo.information_list[-1], y))
+        seekerSolo.information_list.append(IF.run(hider.state_space, seekerSolo.information_list[-1], y, seekerSolo.R))
 
 # =====================================================================
     states_of_interest = times[1:-1]
@@ -175,17 +174,18 @@ def main():
     plt.show()
 
 
-def animate(i, lines, patches, plotter, title):
+def animate(i, lines, patches, plotter_list, title):
 
     title.set_text("Current Step: {}".format(i + 1))
     for lnum, line in enumerate(lines):
-        x, y = plotter[lnum].state_list[i].return_data_list()
+        x, y = plotter_list[lnum].state_list[i].return_data_list()
         line.set_data(x, y)
 
+    # TODO: These aren't plotting right for R2
     for pnum, patch in enumerate(patches):
-        x, y = plotter[pnum].state_list[i].return_data_list()
-        width = 2 * plotter[pnum].state_list[i].x1_2sigma * sqrt(5.991)
-        height = 2 * plotter[pnum].state_list[i].x2_2sigma * sqrt(5.991)
+        x, y = plotter_list[pnum].state_list[i].return_data_list()
+        width = 2 * plotter_list[pnum].state_list[i].x1_2sigma * sqrt(5.991)
+        height = 2 * plotter_list[pnum].state_list[i].x2_2sigma * sqrt(5.991)
         patch.center = (x, y)
         patch.width = width
         patch.height = height
@@ -214,24 +214,24 @@ def setup(dt: float):
     Q = np.eye(2)*.000001
 
     R1 = np.array([
-        [500, 0],
-        [0, 500]
+        [250, 0],
+        [0, 250]
     ])
 
     R2 = np.array([
-        [250, 0],
-        [0, 250]
+        [500, 0],
+        [0, 500]
     ])
 
     initialize_seeker('seeker_1', seeker1_pose_file, 'darkred', workspace, R1)
     initialize_seeker('seeker_2', seeker2_pose_file, 'darkorange', workspace, R2)
     initialize_seeker('seeker_3', seeker3_pose_file, 'darkgoldenrod', workspace, R2)
     initialize_seeker('seeker_4', seeker4_pose_file, 'rebeccapurple', workspace, R2)
-    initialize_seeker('seeker_5', seeker5_pose_file, 'darkgreen', workspace, R1)
-    initialize_seeker('seeker_6', seeker6_pose_file, 'k', workspace, R1)
+    initialize_seeker('seeker_5', seeker5_pose_file, 'darkgreen', workspace, R2)
+    initialize_seeker('seeker_6', seeker6_pose_file, 'k', workspace, R2)
 
     # TODO: need a dynamics model
-    state_space = DiscreteLinearStateSpace(F, G, H, M, Q, R1, dt)
+    state_space = DiscreteLinearStateSpace(F, G, H, M, Q, None, dt)
     # TODO: don't really need R here, make a target class without?
     initialize_hider('hider_1', hider_pose_file, 'r', workspace, state_space)
 
@@ -262,6 +262,9 @@ def plot_comm_lines(comm_lines, line_style='b--'):
 
         plt.plot(x_ords, y_ords, line_style, alpha=0.5)
 
+
+def print_attributes(item):
+    print(item.__dict__)
 
 
 class Plotter:

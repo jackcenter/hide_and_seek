@@ -3,14 +3,15 @@ from data_objects import InformationEstimate, Measurement
 from estimation_tools import DiscreteLinearStateSpace
 
 
-def run(state_space: DiscreteLinearStateSpace, state: InformationEstimate, measurement: Measurement):
+def run(target_state_space: DiscreteLinearStateSpace, state: InformationEstimate, measurement: Measurement,
+        R: np.ndarray):
     step = state.step
     y_k0_p = state.return_data_array()
     Y_k0_p = state.return_information_matrix()
     z_k1 = measurement.return_data_array()
 
-    y_k1_m, Y_k1_m = time_update(state_space, y_k0_p, Y_k0_p)
-    i_k1_p, I_k1_p = measurement_update(state_space, y_k1_m, Y_k1_m, z_k1)
+    y_k1_m, Y_k1_m = time_update(target_state_space, y_k0_p, Y_k0_p)
+    i_k1_p, I_k1_p = measurement_update(target_state_space, y_k1_m, Y_k1_m, z_k1, R)
 
     return InformationEstimate.create_from_array(step, i_k1_p, I_k1_p)
 
@@ -31,9 +32,8 @@ def time_update(state_space: DiscreteLinearStateSpace, y_k0_p: np.ndarray, Y_k0_
     return y_k1_m, Y_k1_m
 
 
-def measurement_update(state_space: DiscreteLinearStateSpace, y_k1_m, Y_k1_m, z_k1):
+def measurement_update(state_space: DiscreteLinearStateSpace, y_k1_m, Y_k1_m, z_k1, R):
     H_k = state_space.H
-    R = state_space.R
     n, _ = state_space.get_dimensions()
 
     R_inv = np.linalg.inv(R)

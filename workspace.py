@@ -145,7 +145,7 @@ class Seeker(TwoDimensionalRobot):
         current_step = self.information_list[-1].step
         true_measurement = next((x for x in target.truth_model.true_measurements if x.step == current_step + 1), None)
         y = self.get_measurement(true_measurement)
-        self.information_list.append(IF.run(target.state_space, self.information_list[-1], y))
+        self.information_list.append(IF.run(target.state_space, self.information_list[-1], y, self.R))
 
     def create_channel_filter(self, robot_j, target):
         """
