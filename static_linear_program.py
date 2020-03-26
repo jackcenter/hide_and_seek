@@ -83,25 +83,31 @@ def main():
     for robot in seeker_list:
         state_estimate_list = []
         ellipse_list = []
+        meas_list = []
         for i in states_of_interest:
         # TODO: have robot invert these real time to state estimates
             state_estimate = robot.information_list[i].get_state_estimate()
             ellipse = state_estimate.get_covariance_ellipse(robot.color)
+            meas = robot.measurement_list[i]
             state_estimate_list.append(state_estimate)
             ellipse_list.append(ellipse)
+            meas_list.append(meas)
 
-        plotter = Plotter(robot, states_of_interest, state_estimate_list, ellipse_list)
+        plotter = Plotter(robot, states_of_interest, state_estimate_list, ellipse_list, meas_list)
         plotter_list.append(plotter)
 
     state_estimate_list = []
     ellipse_list = []
+    meas_list = []
     for i in states_of_interest:
         state_estimate = seekerSolo.information_list[i].get_state_estimate()
         ellipse = state_estimate.get_covariance_ellipse(seekerSolo.color)
+        meas = seekerSolo.measurement_list[i]
         state_estimate_list.append(state_estimate)
         ellipse_list.append(ellipse)
+        meas_list.append(meas)
 
-    plotter = Plotter(seekerSolo, states_of_interest, state_estimate_list, ellipse_list)
+    plotter = Plotter(seekerSolo, states_of_interest, state_estimate_list, ellipse_list, meas_list)
     plotter_list.append(plotter)
 # =======================================================================
 
@@ -161,20 +167,27 @@ def main():
     patch5 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seeker5.color, fc='None', ls='--')
     patch6 = Ellipse(xy=(0, 0), width=10, height=10, edgecolor=seekerSolo.color, fc='None', ls='--')
     patches = [patch1, patch2, patch3, patch4, patch5, patch6]
-
     for patch in patches:
         ax.add_patch(patch)
+
+    meas1, = ax.plot([], [], 'o', mfc=seeker1.color, markersize=2, mec='None')
+    meas2, = ax.plot([], [], 'o', mfc=seeker2.color, markersize=2, mec='None')
+    meas3, = ax.plot([], [], 'o', mfc=seeker3.color, markersize=2, mec='None')
+    meas4, = ax.plot([], [], 'o', mfc=seeker4.color, markersize=2, mec='None')
+    meas5, = ax.plot([], [], 'o', mfc=seeker5.color, markersize=2, mec='None')
+    meas = [meas1, meas2, meas3, meas4, meas5]
 
     count_text = ax.text(15, -45, "Current Step: ")
     count_text.set_bbox(dict(facecolor='white'))
 
-    anim = FuncAnimation(fig, animate, frames=len(states_of_interest), fargs=[lines, patches, plotter_list, count_text],
+    anim = FuncAnimation(fig, animate, frames=len(states_of_interest),
+                         fargs=[lines, patches, meas, plotter_list, count_text],
                          interval=1000, blit=True, repeat_delay=5000)
 
     plt.show()
 
 
-def animate(i, lines, patches, plotter_list, title):
+def animate(i, lines, patches, meas, plotter_list, title):
 
     title.set_text("Current Step: {}".format(i + 1))
     for lnum, line in enumerate(lines):
@@ -190,8 +203,12 @@ def animate(i, lines, patches, plotter_list, title):
         patch.width = width
         patch.height = height
 
+    for mnum, measurement in enumerate(meas):
+        x, y = plotter_list[mnum].meas_list[i].return_data_list()
+        measurement.set_data(x, y)
+
     # return lines + [title]
-    return lines + patches + [title]
+    return lines + patches + meas + [title]
 
 
 def setup(dt: float):
@@ -268,11 +285,12 @@ def print_attributes(item):
 
 
 class Plotter:
-    def __init__(self, robot, steps: list, states: list, two_sigmas: list, state_names=None):
+    def __init__(self, robot, steps: list, states: list, two_sigmas: list, measurements: list, state_names=None):
         self.name = robot.name
         self.step_list = steps
         self.state_list = states
         self.two_sigma_list = two_sigmas
+        self.meas_list = measurements
         self.color = robot.color
         self.state_names = state_names
 
