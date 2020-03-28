@@ -41,8 +41,8 @@ diag([500 m^2, 500 m^2]). This means that Seeker 1 has a significantly more reli
 rest of the seekers, though none of the sensors are particularly good. 
 
 For this example, Seeker 1, pictured at the top left of the map at (-40, 40), is estimating the state of the hider at 
-(0, 30) independently from the other seekers. The Control Position located at (5, -25) is a Pseudo-Seeker that is meant 
-to directly compare the results from Seeker 3 at (0, -40). This Pseudo-Seeker uses the exact same measurement generated 
+(30, 0) independently from the other seekers. The Control Position located at (-25, 5) is a Pseudo-Seeker that is meant 
+to directly compare the results from Seeker 3 at (-40, 0). This Pseudo-Seeker uses the exact same measurement generated 
 by Seeker 3, but does not have the benefit of sharing information with the network. The remaining seekers, Seeker 2 
 through Seeker 5, share information according to the dashed blue lined that connects them (ie. Seeker 2 (-20, 20) can 
 only communicate with Seeker 3, Seeker 5 (-40, -40) can only communicate with Seeker 4 (-20, -5), whereas Seeker 3 
